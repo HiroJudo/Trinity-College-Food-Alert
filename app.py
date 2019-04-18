@@ -11,11 +11,12 @@ from hasMather import hasFood
 app = Flask(__name__)
 mail = Mail(app)
 
+# mysql://b8a30b72c2b3f4:17088485@us-cdbr-iron-east-02.cleardb.net/heroku_6c79d3633a7e6ba?reconnect=true
 # Config MySQL
-app.config['MYSQL_HOST'] = 'localhost'
-app.config['MYSQL_USER'] = 'root'
-app.config['MYSQL_PASSWORD'] = '22812100904'
-app.config['MYSQL_DB'] = 'myflaskapp'
+app.config['MYSQL_HOST'] = 'us-cdbr-iron-east-02.cleardb.net'
+app.config['MYSQL_USER'] = 'b8a30b72c2b3f4'
+app.config['MYSQL_PASSWORD'] = '17088485'
+app.config['MYSQL_DB'] = 'heroku_6c79d3633a7e6ba'
 app.config['MYSQL_CURSORCLASS'] = 'DictCursor'
 
 #Config flask_mail
@@ -34,6 +35,7 @@ mail = Mail(app)
 # Index
 @app.route('/')
 def index():
+    """
     cur = mysql.connection.cursor()
     result = cur.execute("SELECT * FROM users")
     data = cur.fetchall()
@@ -42,8 +44,9 @@ def index():
         address = customer['email']
         msg = Message("Clamming season",sender="bonjovi0904@gmail.com",recipients=[address])
         msg.body = "Hello " +customer['name']+ ". Your favorite menu " + customer['fabfood'] + " is in mather dining hall"
-        if hasFood(customer['fabfood']) == 1:
-           mail.send(msg)
+        #if hasFood(customer['fabfood']) == 1:
+        #   mail.send(msg)
+    """
     return render_template('home.html')
 
 
@@ -51,6 +54,7 @@ def index():
 @app.route('/about')
 def about():
     return render_template('about.html')
+
 
 
 # Articles
@@ -99,7 +103,6 @@ class RegisterForm(Form):
         validators.EqualTo('confirm', message='Passwords do not match')
     ])
     confirm = PasswordField('Confirm Password')
-    fabfood = StringField('Favorite Food')
 
 
 # User Register
@@ -111,13 +114,12 @@ def register():
         email = form.email.data
         username = form.username.data
         password = sha256_crypt.encrypt(str(form.password.data))
-        fabfood = form.fabfood.data
 
         # Create cursor
         cur = mysql.connection.cursor()
 
         # Execute query
-        cur.execute("INSERT INTO users(name, email, username, password, fabfood) VALUES(%s, %s, %s, %s, %s)", (name, email, username, password,fabfood))
+        cur.execute("INSERT INTO users(name, email, username, password) VALUES(%s, %s, %s, %s)", (name, email, username, password))
 
         # Commit to DB
         mysql.connection.commit()
@@ -150,6 +152,7 @@ def login():
             data = cur.fetchone()
             password = data['password']
 
+            print(password)
             # Compare Passwords
             if sha256_crypt.verify(password_candidate, password):
                 # Passed
@@ -157,7 +160,7 @@ def login():
                 session['username'] = username
 
                 flash('You are now logged in', 'success')
-                return redirect(url_for('about'))
+                return redirect(url_for('dashboard',username=username))
             else:
                 error = 'Invalid login'
                 return render_template('login.html', error=error)
@@ -188,122 +191,36 @@ def logout():
     flash('You are now logged out', 'success')
     return redirect(url_for('login'))
 
-# Dashboard
-"""
-@app.route('/dashboard')
-@is_logged_in
-def dashboard():
+
+@app.route('/dashboard/<username>', methods=['GET', 'POST'])
+def dashboard(username):
     # Create cursor
     cur = mysql.connection.cursor()
+    if request.method == 'POST':
+        if request.form['food_name'] != '':
+            newfood = request.form['food_name']
+            #cur = mysql.connection.cursor()
+            cur.execute("INSERT INTO favfood(username, food) VALUES(%s, %s)", (username, newfood))
+            mysql.connection.commit()
+            #cur.close()
+            redirect(url_for('dashboard',username=username))
+    # Get user by username
+    result = cur.execute("SELECT * FROM favfood WHERE username = %s", [username])
+    food = cur.fetchall()
 
-    # Get articles
-    #result = cur.execute("SELECT * FROM articles")
-    # Show articles only from the user logged in
-    result = cur.execute("SELECT * FROM articles WHERE author = %s", [session['username']])
-
-    articles = cur.fetchall()
-
-    if result > 0:
-        return render_template('dashboard.html', articles=articles)
-    else:
-        msg = 'No Articles Found'
-        return render_template('dashboard.html', msg=msg)
-    # Close connection
-    cur.close()
-
-# Article Form Class
-class ArticleForm(Form):
-    title = StringField('Title', [validators.Length(min=1, max=200)])
-    body = TextAreaField('Body', [validators.Length(min=30)])
-
-# Add Article
-@app.route('/add_article', methods=['GET', 'POST'])
-@is_logged_in
-def add_article():
-    form = ArticleForm(request.form)
-    if request.method == 'POST' and form.validate():
-        title = form.title.data
-        body = form.body.data
-
-        # Create Cursor
-        cur = mysql.connection.cursor()
-
-        # Execute
-        cur.execute("INSERT INTO articles(title, body, author) VALUES(%s, %s, %s)",(title, body, session['username']))
-
-        # Commit to DB
-        mysql.connection.commit()
-
-        #Close connection
-        cur.close()
-
-        flash('Article Created', 'success')
-
-        return redirect(url_for('dashboard'))
-
-    return render_template('add_article.html', form=form)
+    return render_template('dashboard.html', food=food)
 
 
-# Edit Article
-@app.route('/edit_article/<string:id>', methods=['GET', 'POST'])
-@is_logged_in
-def edit_article(id):
-    # Create cursor
+@app.route('/delete_food/<food>', methods=['GET', 'POST'])
+def delete_food(food):
     cur = mysql.connection.cursor()
-
-    # Get article by id
-    result = cur.execute("SELECT * FROM articles WHERE id = %s", [id])
-
-    article = cur.fetchone()
-    cur.close()
-    # Get form
-    form = ArticleForm(request.form)
-
-    # Populate article form fields
-    form.title.data = article['title']
-    form.body.data = article['body']
-
-    if request.method == 'POST' and form.validate():
-        title = request.form['title']
-        body = request.form['body']
-
-        # Create Cursor
-        cur = mysql.connection.cursor()
-        app.logger.info(title)
-        # Execute
-        cur.execute ("UPDATE articles SET title=%s, body=%s WHERE id=%s",(title, body, id))
-        # Commit to DB
-        mysql.connection.commit()
-
-        #Close connection
-        cur.close()
-
-        flash('Article Updated', 'success')
-
-        return redirect(url_for('dashboard'))
-
-    return render_template('edit_article.html', form=form)
-
-# Delete Article
-@app.route('/delete_article/<string:id>', methods=['POST'])
-@is_logged_in
-def delete_article(id):
-    # Create cursor
-    cur = mysql.connection.cursor()
-
-    # Execute
-    cur.execute("DELETE FROM articles WHERE id = %s", [id])
-
-    # Commit to DB
+    cur.execute("DELETE FROM favfood WHERE username=%s and food=%s", (session['username'], food))
     mysql.connection.commit()
+    print('the function is called')
+    print(session['username'])
+    return redirect(url_for('dashboard',username=session['username']))
 
-    #Close connection
-    cur.close()
 
-    flash('Article Deleted', 'success')
-
-    return redirect(url_for('dashboard'))
-"""
 app.secret_key='ftamada'
 if __name__ == '__main__':
     #app.secret_key='ftamada'

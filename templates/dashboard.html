@@ -1,0 +1,21 @@
+{% extends 'layout.html' %}
+
+{% block body %}
+  <h1>Dashboard</h1>
+  <ul class="list-group">
+    {% for item in food %}
+      <li class="list-group-item">{{item.food}}
+        <form action="{{url_for('delete_food',food = item.food)}}" method="POST">
+          <input type=submit class="btn btn-primary" value="Delete"></input>
+        </form>
+      </li>
+    {% endfor %}
+  </ul>
+  <form action="" method="POST">
+    <div class="form-group">
+      <label>Add Soup</label>
+      <input type="text" name="food_name" class="form-control" value={{request.form.food_name}}>
+    </div>
+    <button type="submit" class="btn btn-primary">Submit</button>
+  </form>
+{% endblock %}
