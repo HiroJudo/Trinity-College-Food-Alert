@@ -2,19 +2,31 @@
 
 {% block body %}
   <h1>Dashboard</h1>
+  </a>
+  <h4>Your favorite food is</h4>
   <ul class="list-group">
     {% for item in food %}
-      <li class="list-group-item">{{item.food}}
-        <form action="{{url_for('delete_food',food = item.food)}}" method="POST">
-          <input type=submit class="btn btn-primary" value="Delete"></input>
-        </form>
+      <li class="list-group-item">
+        {{item.food}}
+        <span class="pull-right" style= "margin-top: -7.5px;">
+          <form action="{{url_for('delete_food',food = item.food)}}" method="POST">
+            <input type=submit class="btn btn-primary" value="Delete"></input>
+          </form>
+        </span>
       </li>
     {% endfor %}
   </ul>
   <form action="" method="POST">
     <div class="form-group">
-      <label>Add Soup</label>
-      <input type="text" name="food_name" class="form-control" value={{request.form.food_name}}>
+      <label>Add Your favorite Soup</label>
+      <!--<input type="text" name="food_name" class="form-control">-->
+      <select class="selectpicker" name="food_name">
+        <option>Chicken Noodle Soup</option>
+        <option>Tomato Basil Bisque</option>
+        <option>Broccoli Cheddar Soup</option>
+        <option>Vegetable Beef Barley </option>
+        <option>Carrot and Ginger Soup</option>
+      </select>
     </div>
     <button type="submit" class="btn btn-primary">Submit</button>
   </form>

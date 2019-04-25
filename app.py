@@ -6,7 +6,7 @@ from passlib.hash import sha256_crypt
 from functools import wraps
 from flask_mail import Mail
 from flask_mail import Message
-from hasMather import hasFood
+from hasMather import scrapefood
 
 app = Flask(__name__)
 mail = Mail(app)
@@ -55,43 +55,6 @@ def index():
 def about():
     return render_template('about.html')
 
-
-
-# Articles
-"""
-@app.route('/articles')
-def articles():
-    # Create cursor
-    cur = mysql.connection.cursor()
-
-    # Get articles
-    result = cur.execute("SELECT * FROM articles")
-
-    articles = cur.fetchall()
-
-    if result > 0:
-        return render_template('articles.html', articles=articles)
-    else:
-        msg = 'No Articles Found'
-        return render_template('articles.html', msg=msg)
-    # Close connection
-    cur.close()
-"""
-
-#Single Article
-"""
-@app.route('/article/<string:id>/')
-def article(id):
-    # Create cursor
-    cur = mysql.connection.cursor()
-
-    # Get article
-    result = cur.execute("SELECT * FROM articles WHERE id = %s", [id])
-
-    article = cur.fetchone()
-
-    return render_template('article.html', article=article)
-"""
 
 # Register Form Class
 class RegisterForm(Form):
@@ -199,9 +162,11 @@ def dashboard(username):
     if request.method == 'POST':
         if request.form['food_name'] != '':
             newfood = request.form['food_name']
+            result = cur.execute("SELECT * FROM favfood WHERE username = %s AND food = %s", (username, newfood))
             #cur = mysql.connection.cursor()
-            cur.execute("INSERT INTO favfood(username, food) VALUES(%s, %s)", (username, newfood))
-            mysql.connection.commit()
+            if result <= 0:
+                cur.execute("INSERT INTO favfood(username, food) VALUES(%s, %s)", (username, newfood))
+                mysql.connection.commit()
             #cur.close()
             redirect(url_for('dashboard',username=username))
     # Get user by username
@@ -216,7 +181,6 @@ def delete_food(food):
     cur = mysql.connection.cursor()
     cur.execute("DELETE FROM favfood WHERE username=%s and food=%s", (session['username'], food))
     mysql.connection.commit()
-    print('the function is called')
     print(session['username'])
     return redirect(url_for('dashboard',username=session['username']))
 
